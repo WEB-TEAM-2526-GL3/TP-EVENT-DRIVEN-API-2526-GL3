@@ -17,7 +17,7 @@ This repository is based on our `TP-REST-2526-GL3` repository.
 
 - `npm run seed` # this is for seeding
 
-- create a `.env` file inside `gestionnaire-cv/` following the `.env.example` file
+- create a `.env` file following the `.env.example` file
 
 - `npm run start:dev`
 
