@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - CV Manager</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(170deg, #f0f5ff, #dfe9ff);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .card {
+        width: min(440px, 92vw);
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #d4ddef;
+        padding: 20px;
+        box-shadow: 0 12px 35px rgba(15, 39, 87, 0.09);
+      }
+      h1 {
+        margin: 0 0 6px;
+        color: #12243f;
+      }
+      p {
+        margin: 0 0 14px;
+        color: #4f5d79;
+      }
+      label {
+        display: block;
+        margin: 10px 0 4px;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #becbe5;
+      }
+      button {
+        margin-top: 14px;
+        padding: 10px 14px;
+        border: none;
+        border-radius: 8px;
+        background: #1656d8;
+        color: #fff;
+        cursor: pointer;
+      }
+      pre {
+        margin-top: 14px;
+        background: #0f1f3d;
+        color: #d6e4ff;
+        border-radius: 8px;
+        padding: 10px;
+        max-height: 220px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <h1>CV Manager Login</h1>
+      <p>Connecte-toi pour accéder au client et à Swagger.</p>
+
+      <label for="usernameOrEmail">Username or Email</label>
+      <input id="usernameOrEmail" placeholder="admin@gmail.com" />
+
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="******" />
+
+      <button id="loginBtn">Login</button>
+      <pre id="output">Waiting...</pre>
+    </section>
+
+    <script>
+      const output = document.getElementById('output');
+
+      function setOutput(value) {
+        if (typeof value === 'string') output.textContent = value;
+        else output.textContent = JSON.stringify(value, null, 2);
+      }
+
+      function saveToken(token) {
+        localStorage.setItem('tp_token', token);
+        document.cookie = `tp_token=${encodeURIComponent(token)}; Path=/; SameSite=Lax`;
+      }
+
+      document.getElementById('loginBtn').addEventListener('click', async () => {
+        try {
+          const usernameOrEmail = document
+            .getElementById('usernameOrEmail')
+            .value.trim();
+          const password = document.getElementById('password').value;
+
+          const response = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usernameOrEmail, password }),
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(JSON.stringify(data, null, 2));
+          if (!data.access_token) throw new Error('No access_token returned');
+
+          saveToken(data.access_token);
+          setOutput({ message: 'Login successful. Redirecting...' });
+          window.location.replace('/client/app.html');
+        } catch (error) {
+          setOutput(error.message || String(error));
+        }
+      });
+    </script>
+  </body>
+</html>

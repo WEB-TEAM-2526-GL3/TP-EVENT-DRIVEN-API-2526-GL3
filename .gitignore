@@ -1,0 +1,55 @@
+# Dependencies
+/node_modules
+
+# Compiled output
+/dist
+/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+*.swp
+
+# Testing
+/coverage
+/.nyc_output
+
+# Temp and Runtime data
+.temp
+.tmp
+/tmp
+pids
+*.pid
+*.seed
+*.pid.lock
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.jsongestionnaire-cvs/node_modules/
+gestionnaire-cvs/dist/
+**/node_modules/
+**/dist/
+
+
+#Data
+
+*/uploads/

@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Client - CV Manager</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --text: #16233a;
+        --muted: #5b6883;
+        --accent: #1463ff;
+        --accent-2: #0e4fd4;
+        --border: #d9e0ef;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: linear-gradient(180deg, #f7f9ff, #eef3ff);
+        color: var(--text);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      h1 {
+        margin: 0;
+      }
+      .header-actions {
+        display: flex;
+        gap: 8px;
+      }
+      button {
+        padding: 10px 14px;
+        border: none;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--accent-2);
+      }
+      .danger {
+        background: #d6324b;
+      }
+      .danger:hover {
+        background: #bc2940;
+      }
+      p {
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      label {
+        display: block;
+        margin: 8px 0 4px;
+        font-size: 14px;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccd6ea;
+        border-radius: 8px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      pre {
+        margin-top: 16px;
+        background: #111a2c;
+        color: #d4e2ff;
+        border-radius: 10px;
+        padding: 12px;
+        overflow: auto;
+        max-height: 320px;
+      }
+      .cv-preview {
+        margin-top: 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        background: #fbfdff;
+      }
+      .cv-header {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .cv-photo {
+        width: 84px;
+        height: 84px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 1px solid var(--border);
+      }
+      .cv-meta {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 8px;
+      }
+      .cv-meta div {
+        background: #f2f6ff;
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .cv-link {
+        display: inline-block;
+        margin-top: 10px;
+        color: var(--accent-2);
+      }
+      .skill-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .skill-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: #f7faff;
+        font-size: 13px;
+      }
+      .skill-option input {
+        width: auto;
+        margin: 0;
+        padding: 0;
+      }
+      .skill-tag {
+        display: inline-block;
+        margin: 4px 6px 0 0;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #e8efff;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>CV Manager Client</h1>
+      <div class="header-actions">
+        <button id="docsBtn">Open Swagger (/docs)</button>
+        <button id="logoutBtn" class="danger">Logout</button>
+      </div>
+    </header>
+    <p>Access authorized. API actions are available only after login.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>CV Actions</h2>
+        <div class="row">
+          <button id="listCvBtn">GET /cv (My CVs)</button>
+          <button id="listAllCvBtn" style="display: none">GET /cv/all (Admin)</button>
+          <button id="getCvBtn">GET /cv/:id</button>
+          <button id="viewStructuredBtn">View Structured CV</button>
+        </div>
+        <label for="cvId">CV ID</label>
+        <input id="cvId" type="number" placeholder="1" />
+      </section>
+
+      <section class="card">
+        <h2>Create CV (+ optional image)</h2>
+        <label for="name">name</label>
+        <input id="name" placeholder="cv-demo" />
+        <label for="firstname">firstname</label>
+        <input id="firstname" placeholder="Med" />
+        <label for="lastname">lastname</label>
+        <input id="lastname" placeholder="Test" />
+        <label for="age">age</label>
+        <input id="age" type="number" placeholder="23" />
+        <label for="cin">cin</label>
+        <input id="cin" placeholder="12345678" />
+        <label for="job">job</label>
+        <input id="job" placeholder="Backend Developer" />
+        <label>skills</label>
+        <div id="skillsContainer" class="skill-list">
+          <span class="muted">Loading skills...</span>
+        </div>
+        <label for="profileImage">Profile image (optional)</label>
+        <input id="profileImage" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+        <button id="createCvBtn">Create CV</button>
+      </section>
+
+      <section class="card">
+        <h2>Upload CV File (PDF)</h2>
+        <label for="uploadCvId">CV ID</label>
+        <input id="uploadCvId" type="number" placeholder="1" />
+        <label for="pdfFile">PDF file</label>
+        <input id="pdfFile" type="file" accept=".pdf,application/pdf" />
+        <button id="uploadBtn">POST /cv/upload/:id</button>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top: 16px">
+      <h2>Structured CV View</h2>
+      <div id="cvPreview" class="cv-preview">
+        <span class="muted">No CV selected yet.</span>
+      </div>
+    </section>
+
+    <pre id="output">Ready.</pre>
+
+    <script>
+      function getToken() {
+        return localStorage.getItem('tp_token') || '';
+      }
+
+      function clearSession() {
+        localStorage.removeItem('tp_token');
+        document.cookie =
+          'tp_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+      }
+
+      function requireLogin() {
+        if (!getToken()) {
+          window.location.replace('/client/login.html');
+          return false;
+        }
+        return true;
+      }
+
+      const output = document.getElementById('output');
+      function setOutput(data) {
+        output.textContent =
+          typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      }
+
+      function readRoleFromToken(token) {
+        try {
+          const parts = token.split('.');
+          if (parts.length < 2) return null;
+          const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const payloadText = atob(payloadBase64);
+          const payload = JSON.parse(payloadText);
+          return typeof payload.role === 'string' ? payload.role : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function toPublicFileUrl(relativePath) {
+        if (!relativePath) return null;
+        if (relativePath.startsWith('uploads/')) return `/${relativePath}`;
+        return relativePath;
+      }
+
+      function renderCvCard(cv) {
+        const container = document.getElementById('cvPreview');
+        if (!cv || typeof cv !== 'object' || cv.message) {
+          container.innerHTML = '<span class="muted">CV not found.</span>';
+          return;
+        }
+
+        const imageUrl = toPublicFileUrl(cv.imagePath);
+        const pdfUrl = toPublicFileUrl(cv.path);
+        const skills = Array.isArray(cv.skills) ? cv.skills : [];
+        const skillsHtml =
+          skills.length > 0
+            ? skills
+                .map(
+                  (skill) =>
+                    `<span class="skill-tag">${escapeHtml(skill.designation || `Skill #${skill.id}`)}</span>`,
+                )
+                .join('')
+            : '<span class="muted">No skills assigned.</span>';
+
+        container.innerHTML = `
+          <div class="cv-header">
+            ${imageUrl ? `<img class="cv-photo" src="${escapeHtml(imageUrl)}" alt="Profile image" />` : ''}
+            <div>
+              <h3>${escapeHtml(cv.firstname)} ${escapeHtml(cv.lastname)}</h3>
+              <div class="muted">${escapeHtml(cv.job)}</div>
+            </div>
+          </div>
+          <div class="cv-meta">
+            <div><strong>ID:</strong> ${escapeHtml(cv.id)}</div>
+            <div><strong>Name:</strong> ${escapeHtml(cv.name)}</div>
+            <div><strong>Age:</strong> ${escapeHtml(cv.age)}</div>
+            <div><strong>CIN:</strong> ${escapeHtml(cv.cin)}</div>
+          </div>
+          <div style="margin-top: 10px"><strong>Skills:</strong><div>${skillsHtml}</div></div>
+          ${pdfUrl ? `<a class="cv-link" href="${escapeHtml(pdfUrl)}" target="_blank" rel="noreferrer">Open attached CV PDF</a>` : '<div class="muted" style="margin-top: 10px">No PDF attached.</div>'}
+        `;
+      }
+
+      function renderSkillsSelector(skills) {
+        const container = document.getElementById('skillsContainer');
+        if (!Array.isArray(skills) || skills.length === 0) {
+          container.innerHTML = '<span class="muted">No skills available.</span>';
+          return;
+        }
+
+        container.innerHTML = skills
+          .map(
+            (skill) => `
+              <label class="skill-option">
+                <input type="checkbox" class="skill-checkbox" value="${escapeHtml(skill.id)}" />
+                <span>${escapeHtml(skill.designation)}</span>
+              </label>
+            `,
+          )
+          .join('');
+      }
+
+      function getSelectedSkillIds() {
+        const selected = Array.from(document.querySelectorAll('.skill-checkbox:checked'));
+        return selected
+          .map((checkbox) => Number(checkbox.value))
+          .filter((value) => Number.isInteger(value) && value > 0);
+      }
+
+      async function apiRequest(path, options = {}) {
+        const token = getToken();
+        if (!token) {
+          clearSession();
+          window.location.replace('/client/login.html');
+          throw new Error('Missing token. Please login.');
+        }
+
+        const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+        const response = await fetch(path, { ...options, headers });
+        const text = await response.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = text;
+        }
+        if (!response.ok) {
+          if (response.status === 401) {
+            clearSession();
+            window.location.replace('/client/login.html');
+          }
+          throw new Error(`HTTP ${response.status}\n${JSON.stringify(data, null, 2)}`);
+        }
+        return data;
+      }
+
+      async function loadSkillsForForm() {
+        try {
+          const skills = await apiRequest('/skill');
+          renderSkillsSelector(skills);
+        } catch (error) {
+          document.getElementById('skillsContainer').innerHTML =
+            '<span class="muted">Failed to load skills.</span>';
+          setOutput(error.message || String(error));
+        }
+      }
+
+      async function loadCvForStructuredView(id, isAdmin) {
+        if (isAdmin) {
+          const all = await apiRequest('/cv/all');
+          return Array.isArray(all) ? all.find((item) => Number(item.id) === Number(id)) : null;
+        }
+        return await apiRequest(`/cv/${id}`);
+      }
+
+      if (!requireLogin()) {
+        // redirection already done
+      }
+
+      const role = readRoleFromToken(getToken());
+      const isAdmin = role === 'admin';
+      if (isAdmin) {
+        document.getElementById('listAllCvBtn').style.display = 'inline-block';
+      }
+      if (!isAdmin) {
+        document.getElementById('docsBtn').style.display = 'none';
+      }
+
+      loadSkillsForForm();
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        clearSession();
+        window.location.replace('/client/login.html');
+      });
+
+      document.getElementById('docsBtn').addEventListener('click', () => {
+        window.open('/docs', '_blank', 'noopener,noreferrer');
+      });
+
+      document.getElementById('listCvBtn').addEventListener('click', async () => {
+        try {
+          const data = await apiRequest('/cv');
+          setOutput(data);
+        } catch (error) {
+          setOutput(error.message || String(error));
+        }
+      });
+
+      document.getElementById('listAllCvBtn').addEventListener('click', async () => {
+        try {
+          const data = await apiRequest('/cv/all');
+          setOutput(data);
+        } catch (error) {
+          setOutput(error.message || String(error));
+        }
+      });
+
+      document.getElementById('getCvBtn').addEventListener('click', async () => {
+        try {
+          const id = document.getElementById('cvId').value.trim();
+          if (!id) throw new Error('Provide CV id first.');
+          const data = await apiRequest(`/cv/${id}`);
+          setOutput(data);
+        } catch (error) {
+          setOutput(error.message || String(error));
+        }
+      });
+
+      document.getElementById('viewStructuredBtn').addEventListener('click', async () => {
+        try {
+          const id = document.getElementById('cvId').value.trim();
+          if (!id) throw new Error('Provide CV id first.');
+          const cv = await loadCvForStructuredView(id, isAdmin);
+          renderCvCard(cv);
+          setOutput(cv || { message: 'CV not found' });
+        } catch (error) {
+          setOutput(error.message || String(error));
+          renderCvCard(null);
+        }
+      });
+
+      document.getElementById('createCvBtn').addEventListener('click', async () => {
+        try {
+          const payload = {
+            name: document.getElementById('name').value.trim(),
+            firstname: document.getElementById('firstname').value.trim(),
+            lastname: document.getElementById('lastname').value.trim(),
+            age: Number(document.getElementById('age').value),
+            cin: document.getElementById('cin').value.trim(),
+            job: document.getElementById('job').value.trim(),
+            skills: getSelectedSkillIds(),
+          };
+
+          const createdCv = await apiRequest('/cv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          let finalCv = createdCv;
+          const imageFile = document.getElementById('profileImage').files[0];
+          if (imageFile && createdCv?.id) {
+            const imageForm = new FormData();
+            imageForm.append('image', imageFile);
+            finalCv = await apiRequest(`/cv/upload-image/${createdCv.id}`, {
+              method: 'POST',
+              body: imageForm,
+            });
+          }
+
+          const createdId = finalCv?.id || createdCv?.id;
+          if (createdId) {
+            document.getElementById('cvId').value = String(createdId);
+            document.getElementById('uploadCvId').value = String(createdId);
+          }
+
+          renderCvCard(finalCv);
+          setOutput(finalCv);
+        } catch (error) {
+          setOutput(error.message || String(error));
+        }
+      });
+
+      document.getElementById('uploadBtn').addEventListener('click', async () => {
+        try {
+          const id = document.getElementById('uploadCvId').value.trim();
+          const file = document.getElementById('pdfFile').files[0];
+          if (!id) throw new Error('Provide CV id for upload.');
+          if (!file) throw new Error('Select a PDF file first.');
+
+          const form = new FormData();
+          form.append('file', file);
+
+          const data = await apiRequest(`/cv/upload/${id}`, {
+            method: 'POST',
+            body: form,
+          });
+          setOutput(data);
+          renderCvCard(data);
+        } catch (error) {
+          setOutput(error.message || String(error));
+        }
+      });
+    </script>
+  </body>
+</html>
