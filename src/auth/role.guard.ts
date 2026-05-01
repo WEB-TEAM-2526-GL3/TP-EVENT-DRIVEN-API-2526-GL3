@@ -18,7 +18,7 @@ export const RoleGuard = (requiredRole: RoleEnum): Type<CanActivate> => {
         return false;
       }
 
-      return request.user.role === requiredRole;
+      return request.user.role === requiredRole.toString();
     }
   }
 

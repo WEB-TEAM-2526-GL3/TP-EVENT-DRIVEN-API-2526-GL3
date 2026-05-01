@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { AuthUser } from '../interfaces/auth-user.interface';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import * as dotenv from 'dotenv';
-import { RoleEnum } from '../enums/role.enum';
 
 dotenv.config();
 @Injectable()

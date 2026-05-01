@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateCvDto } from './dto/create-cv.dto';
 import { UpdateCvDto } from './dto/update-cv.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -117,7 +121,9 @@ export class CvService {
     return savedCv;
   }
 
-  private async resolveSkills(skillIds?: number[]): Promise<Skill[] | undefined> {
+  private async resolveSkills(
+    skillIds?: number[],
+  ): Promise<Skill[] | undefined> {
     if (skillIds === undefined) return undefined;
     if (skillIds.length === 0) return [];
 

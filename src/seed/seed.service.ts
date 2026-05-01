@@ -46,32 +46,32 @@ export class SeedService {
     const users: User[] = [];
     const names: { firstName: string; lastName: string }[] = [];
     const salt = await bcrypt.genSalt();
-      const password = randPassword();
-      const lastName = randLastName();
-      const firstName = randFirstName();
-      const username = randUserName({
-        lastName: lastName,
-        firstName: firstName,
-      });
+    const password = randPassword();
+    const lastName = randLastName();
+    const firstName = randFirstName();
+    const username = randUserName({
+      lastName: lastName,
+      firstName: firstName,
+    });
 
-      const user = this.userRepository.create({
-        username: username,
-        email: randEmail({
-          provider: 'gmail',
-          suffix: 'com',
-        }),
-        password: await bcrypt.hash(password, salt),
-        salt: salt,
-        role:  RoleEnum.ADMIN,
-      });
+    const user = this.userRepository.create({
+      username: username,
+      email: randEmail({
+        provider: 'gmail',
+        suffix: 'com',
+      }),
+      password: await bcrypt.hash(password, salt),
+      salt: salt,
+      role: RoleEnum.ADMIN,
+    });
 
-      console.log(
-        `${username} (${user.role})`,
-        ' '.repeat(Math.max(0, 30 - `${username} (${user.role})`.length)),
-        password,
-      );
-      users.push(await this.userRepository.save(user));
-      names.push({ firstName, lastName });
+    console.log(
+      `${username} (${user.role})`,
+      ' '.repeat(Math.max(0, 30 - `${username} (${user.role})`.length)),
+      password,
+    );
+    users.push(await this.userRepository.save(user));
+    names.push({ firstName, lastName });
     for (let i = 0; i < nbOfUsers; i++) {
       const salt = await bcrypt.genSalt();
       const password = randPassword();

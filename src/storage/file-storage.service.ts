@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { promises as fs } from 'fs';//donne-moi la version moderne de fs basée sur les Promises
-import { randomUUID } from 'crypto';//avoid file name collision
+import { promises as fs } from 'fs'; //donne-moi la version moderne de fs basée sur les Promises
+import { randomUUID } from 'crypto'; //avoid file name collision
 import { extname, join } from 'path';
 
 @Injectable()
@@ -81,7 +81,10 @@ export class FileStorageService {
     }
 
     const allowedExtensions = options?.allowedExtensions ?? [];
-    if (allowedExtensions.length > 0 && !allowedExtensions.includes(extension)) {
+    if (
+      allowedExtensions.length > 0 &&
+      !allowedExtensions.includes(extension)
+    ) {
       throw new BadRequestException(
         `Unsupported ${options?.kind ?? 'file'} extension`,
       );
@@ -92,10 +95,15 @@ export class FileStorageService {
       allowedMimeTypes.length > 0 &&
       !allowedMimeTypes.includes(file.mimetype.toLowerCase())
     ) {
-      throw new BadRequestException(`Unsupported ${options?.kind ?? 'file'} type`);
+      throw new BadRequestException(
+        `Unsupported ${options?.kind ?? 'file'} type`,
+      );
     }
 
-    if (options?.signatureType === 'pdf' && !this.hasPdfSignature(file.buffer)) {
+    if (
+      options?.signatureType === 'pdf' &&
+      !this.hasPdfSignature(file.buffer)
+    ) {
       throw new BadRequestException('Invalid PDF file content');
     }
 
@@ -128,11 +136,7 @@ export class FileStorageService {
 
   private hasJpegSignature(buffer: Buffer): boolean {
     if (buffer.length < 3) return false;
-    return (
-      buffer[0] === 0xff &&
-      buffer[1] === 0xd8 &&
-      buffer[2] === 0xff
-    );
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
   }
 
   private hasWebpSignature(buffer: Buffer): boolean {

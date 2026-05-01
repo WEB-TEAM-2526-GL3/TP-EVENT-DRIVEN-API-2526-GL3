@@ -14,4 +14,4 @@ async function bootstrap() {
   // Fermeture du script
   await app.close();
 }
-bootstrap();
+void bootstrap();
