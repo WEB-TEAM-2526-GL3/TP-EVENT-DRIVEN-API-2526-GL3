@@ -15,9 +15,9 @@ This repository is based on our `TP-REST-2526-GL3` repository.
 
 - `docker compose up -d`
 
-- `npm run seed` # this is for seeding
-
 - create a `.env` file following the `.env.example` file
+
+- `npm run seed` # this is for seeding
 
 - `npm run start:dev`
 
