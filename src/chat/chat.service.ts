@@ -18,16 +18,18 @@ export class ChatService {
 
     @InjectRepository(ChatReaction)
     private readonly reactionRepository: Repository<ChatReaction>,
-
+    // Repository pour vérifier l’existence des utilisateurs
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
 
+  //On trie les IDs pour garantir que les deux utilisateurs rejoignent toujours la même room.
   getRoomName(userId1: number, userId2: number): string {
     const ids = [userId1, userId2].sort((a, b) => a - b);
     return `chat-${ids[0]}-${ids[1]}`;
   }
 
+  //On cherche les messages dans les deux sens
   async findConversation(userId: number, receiverId: number) {
     await this.ensureUserExists(receiverId);
 
@@ -36,8 +38,10 @@ export class ChatService {
         { senderId: userId, receiverId },
         { senderId: receiverId, receiverId: userId },
       ],
+      // Charge les données liées au message
       relations: ['replyTo', 'replyTo.sender', 'reactions'],
       order: {
+        // Trie les messages du plus ancien au plus récent
         createdAt: 'ASC',
       },
     });
@@ -113,6 +117,7 @@ export class ChatService {
       );
     }
 
+    // Vérifie si cet utilisateur a déjà mis le même emojisur ce même message
     const existingReaction = await this.reactionRepository.findOne({
       where: {
         messageId,
@@ -122,6 +127,7 @@ export class ChatService {
     });
 
     if (existingReaction) {
+      // Si la réaction existe déjà, on la supprime
       await this.reactionRepository.delete(existingReaction.id);
     } else {
       const reaction = this.reactionRepository.create({
@@ -132,7 +138,7 @@ export class ChatService {
 
       await this.reactionRepository.save(reaction);
     }
-
+    // Récupère toutes les réactions du message pour recalculer le résumé
     const reactions = await this.reactionRepository.find({
       where: { messageId },
     });
@@ -141,21 +147,30 @@ export class ChatService {
       message,
       reactions: this.summarizeReactions(reactions),
     };
+    /**
+     *    * Résultat :
+     * [
+     *   { emoji: '👍', count: 2 },
+     *   { emoji: '❤️', count: 1 }
+     * ]
+     */
   }
 
   summarizeReactions(reactions: ChatReaction[] = []) {
     const summary: Record<string, number> = {};
-
+    // Compte combien de fois chaque emoji apparait
     for (const reaction of reactions) {
       summary[reaction.emoji] = (summary[reaction.emoji] || 0) + 1;
     }
 
+    // Transforme l’objet summary en tableau exploitable par le frontend
     return Object.entries(summary).map(([emoji, count]) => ({
       emoji,
       count,
     }));
   }
 
+  //garde seulement les champs utiles pour l’interface.
   formatMessage(message: ChatMessage) {
     return {
       id: message.id,
