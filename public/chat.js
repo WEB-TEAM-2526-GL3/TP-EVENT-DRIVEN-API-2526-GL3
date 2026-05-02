@@ -26,6 +26,7 @@ if (!receiverId || Number.isNaN(receiverId)) {
     setStatus('Invalid receiver id in URL', true);
 }
 
+// Connects the browser to the WebSocket server using the JWT token.
 function connectChat() {
     const token = tokenInput.value.trim();
 
@@ -42,11 +43,13 @@ function connectChat() {
         },
     });
 
+    // Runs when the socket connection is created.
     socket.on('connect', function () {
         setStatus('Connected. Loading conversation...', false);
         socket.emit('joinConversation', { receiverId: receiverId });
     });
 
+    // Receives confirmation from the backend with the connected user info.
     socket.on('connected', function (data) {
         currentUser = data.user;
 
@@ -59,11 +62,13 @@ function connectChat() {
         );
     });
 
+    // Receives the old messages of the conversation.
     socket.on('conversationHistory', function (history) {
         messages = history;
         renderMessages();
     });
 
+    // Receives a new message instantly when someone sends one.
     socket.on('newMessage', function (data) {
         const exists = messages.some(function (message) {
             return message.id === data.message.id;
@@ -76,6 +81,7 @@ function connectChat() {
         renderMessages();
     });
 
+    // Receives updated emoji reactions for a message.
     socket.on('messageReactionUpdated', function (data) {
         const message = messages.find(function (message) {
             return message.id === data.messageId;
@@ -87,6 +93,7 @@ function connectChat() {
         }
     });
 
+    // Receives typing notification from the other user.
     socket.on('userTyping', function (data) {
         setStatus(data.username + ' is typing...', false);
 
@@ -103,15 +110,18 @@ function connectChat() {
         }, 1000);
     });
 
+    // Receives chat errors from the backend.
     socket.on('chatError', function (data) {
         setStatus(data.message, true);
     });
 
+    // Runs when the socket disconnects from the backend.
     socket.on('disconnect', function () {
         setStatus('Disconnected', true);
     });
 }
 
+// Sends a new message to the backend through WebSocket.
 function sendMessage() {
     if (!socket || !socket.connected) {
         setStatus('Connect first', true);
@@ -134,6 +144,7 @@ function sendMessage() {
     cancelReply();
 }
 
+// Sends an emoji reaction for a specific message.
 function reactToMessage(messageId, emoji) {
     if (!socket || !socket.connected) {
         setStatus('Connect first', true);
@@ -146,6 +157,7 @@ function reactToMessage(messageId, emoji) {
     });
 }
 
+// Starts replying to a specific message.
 function startReply(messageId) {
     replyToId = messageId;
     replyIdBox.textContent = messageId;
@@ -153,12 +165,14 @@ function startReply(messageId) {
     messageInput.focus();
 }
 
+// Cancels the current reply mode.
 function cancelReply() {
     replyToId = null;
     replyIdBox.textContent = '';
     replyingBox.style.display = 'none';
 }
 
+// Sends typing event while writing and sends message when Enter is pressed.
 messageInput.addEventListener('keydown', function (event) {
     if (event.key === 'Enter') {
         sendMessage();
@@ -169,6 +183,7 @@ messageInput.addEventListener('keydown', function (event) {
     }
 });
 
+// Renders all messages in the chat box.
 function renderMessages() {
     messagesBox.innerHTML = '';
 
@@ -246,11 +261,13 @@ function renderMessages() {
     messagesBox.scrollTop = messagesBox.scrollHeight;
 }
 
+// Updates the status bar message.
 function setStatus(message, isError) {
     statusBox.textContent = message;
     statusBox.className = isError ? 'status error' : 'status';
 }
 
+// Escapes HTML to prevent script injection inside messages.
 function escapeHtml(value) {
     return String(value || '')
         .replaceAll('&', '&amp;')
