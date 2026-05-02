@@ -11,6 +11,8 @@ import { In, Repository } from 'typeorm';
 import { User } from '../user/entities/user.entity';
 import { FileStorageService } from '../storage/file-storage.service';
 import { Skill } from '../skill/entities/skill.entity';
+import { WebhooksService } from '../webhooks/webhooks.service';
+import { WebhookEvent } from '../enums/webhook-event.enum';
 
 @Injectable()
 export class CvService {
@@ -20,6 +22,7 @@ export class CvService {
     @InjectRepository(Skill)
     private readonly skillRepository: Repository<Skill>,
     private readonly fileStorageService: FileStorageService,
+    private readonly webhooksService: WebhooksService,
   ) {}
 
   async create(createCvDto: CreateCvDto, userId: number) {
@@ -32,7 +35,19 @@ export class CvService {
       skills: resolvedSkills ?? [],
     });
 
-    return await this.cvRepository.save(cv);
+    const savedCv = await this.cvRepository.save(cv);
+
+    this.notifyWebhook(WebhookEvent.CV_CREATED, {
+      cvId: savedCv.id,
+      userId,
+      name: savedCv.name,
+      firstname: savedCv.firstname,
+      lastname: savedCv.lastname,
+      job: savedCv.job,
+    });
+
+    return savedCv;
+    // return await this.cvRepository.save(cv);
   }
 
   async findAll(userId: number) {
@@ -67,7 +82,17 @@ export class CvService {
     if (skillIds !== undefined) {
       updatedCv.skills = (await this.resolveSkills(skillIds)) ?? [];
     }
-    return this.cvRepository.save(updatedCv);
+
+    const savedCv = await this.cvRepository.save(updatedCv);
+
+    this.notifyWebhook(WebhookEvent.CV_UPDATED, {
+      cvId: savedCv.id,
+      userId,
+      changes: updateCvDto,
+    });
+
+    return savedCv;
+    // return this.cvRepository.save(updatedCv);
   }
 
   async remove(id: number, userId: number) {
@@ -78,6 +103,15 @@ export class CvService {
     }
 
     await this.cvRepository.remove(existingCv);
+
+    this.notifyWebhook(WebhookEvent.CV_DELETED, {
+      cvId: id,
+      userId,
+      name: existingCv.name,
+      firstname: existingCv.firstname,
+      lastname: existingCv.lastname,
+    });
+
     return { message: `CV with id ${id} deleted` };
   }
 
@@ -97,6 +131,13 @@ export class CvService {
     if (oldPath && oldPath !== newPath) {
       await this.fileStorageService.deleteFileIfExists(oldPath);
     }
+
+    this.notifyWebhook(WebhookEvent.CV_UPDATED, {
+      cvId: savedCv.id,
+      userId,
+      action: 'cv_file_uploaded',
+      path: savedCv.path,
+    });
 
     return savedCv;
   }
@@ -118,6 +159,13 @@ export class CvService {
       await this.fileStorageService.deleteFileIfExists(oldImagePath);
     }
 
+    this.notifyWebhook(WebhookEvent.CV_UPDATED, {
+      cvId: savedCv.id,
+      userId,
+      action: 'cv_image_uploaded',
+      imagePath: savedCv.imagePath,
+    });
+
     return savedCv;
   }
 
@@ -137,5 +185,13 @@ export class CvService {
     }
 
     return skills;
+  }
+
+  private notifyWebhook(event: WebhookEvent, data: Record<string, unknown>) {
+    void this.webhooksService.dispatch(event, data).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+
+      console.error(`Webhook dispatch failed for ${event}: ${message}`);
+    });
   }
 }
