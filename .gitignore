@@ -53,3 +53,8 @@ gestionnaire-cvs/dist/
 #Data
 
 */uploads/
+
+# IDEs
+
+.idea/
+.vscode/

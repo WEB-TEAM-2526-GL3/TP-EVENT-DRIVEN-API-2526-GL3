@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from '../user/entities/user.entity';
-import { Cv } from '../cv/entities/cv.entity';
-import { Skill } from '../skill/entities/skill.entity';
 import { SeedService } from './seed.service';
+import { CvModule } from '../cv/cv.module';
+import { UserModule } from '../user/user.module';
+import { SkillModule } from '../skill/skill.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Cv, Skill])],
+  imports: [CvModule, UserModule, SkillModule],
   providers: [SeedService],
   exports: [SeedService],
 })

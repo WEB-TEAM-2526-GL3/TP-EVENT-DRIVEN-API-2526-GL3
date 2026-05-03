@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,6 +10,7 @@ import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { AuthUser } from '../interfaces/auth-user.interface';
+import { RoleEnum } from '../enums/role.enum';
 
 @Injectable()
 export class UserService {
@@ -14,10 +19,11 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto, role = RoleEnum.USER) {
     const user = this.userRepository.create(createUserDto);
     user.salt = await bcrypt.genSalt();
     user.password = await bcrypt.hash(user.password, user.salt);
+    user.role = role;
     try {
       const savedUser: Partial<User> = await this.userRepository.save(user);
       delete savedUser.password;
@@ -52,6 +58,14 @@ export class UserService {
 
   findOne(id: number) {
     return this.userRepository.findOne({ where: { id } });
+  }
+
+  async resolveUser(id: number) {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    return user;
   }
 
   findOneByUsernameOrEmail(usernameOrEmail: string) {
