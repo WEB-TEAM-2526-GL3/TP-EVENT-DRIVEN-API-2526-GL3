@@ -5,6 +5,7 @@ import { createHmac } from 'crypto';
 import { WebhookSubscription } from './entities/webhook-subscription.entity';
 import { WebhookEvent } from '../enums/webhook-event.enum';
 
+// Type used to store the result of each webhook delivery attempt.
 type WebhookDispatchResult = {
   url: string;
   success: boolean;
@@ -12,6 +13,7 @@ type WebhookDispatchResult = {
   error?: string;
 };
 
+// Type used to store received webhook payloads in memory for testing.
 type ReceivedWebhook = {
   id: number;
   event: string | undefined;
@@ -22,13 +24,16 @@ type ReceivedWebhook = {
 
 @Injectable()
 export class WebhooksService {
+  // Stores received webhooks temporarily until the server restarts.
   private receivedWebhooks: ReceivedWebhook[] = [];
 
+  // Injects the webhook subscription repository to access the database.
   constructor(
     @InjectRepository(WebhookSubscription)
     private readonly webhookRepository: Repository<WebhookSubscription>,
   ) {}
 
+  // Creates a new webhook subscription for a specific event and URL.
   async createSubscription(data: {
     url: string;
     event: WebhookEvent;
@@ -52,6 +57,7 @@ export class WebhooksService {
     return this.webhookRepository.save(subscription);
   }
 
+  // Returns all registered webhook subscriptions.
   findAll() {
     return this.webhookRepository.find({
       order: {
@@ -60,6 +66,7 @@ export class WebhooksService {
     });
   }
 
+  // Deletes a webhook subscription by its id.
   async deleteSubscription(id: number) {
     await this.webhookRepository.delete(id);
 
@@ -68,6 +75,7 @@ export class WebhooksService {
     };
   }
 
+  // Sends a webhook POST request to all active subscriptions of an event.
   async dispatch(event: WebhookEvent, data: Record<string, unknown>) {
     const subscriptions = await this.webhookRepository.find({
       where: {
@@ -101,7 +109,7 @@ export class WebhooksService {
           },
           body,
         });
-
+        // The results table contains the delivery result for each webhook URL
         results.push({
           url: subscription.url,
           success: response.ok,
@@ -123,6 +131,7 @@ export class WebhooksService {
     };
   }
 
+  // Saves a webhook received by the test receiver so we can view it later.
   saveReceivedWebhook(data: {
     event: string | undefined;
     signature: string | undefined;
@@ -141,10 +150,12 @@ export class WebhooksService {
     return receivedWebhook;
   }
 
+  // Returns all received webhook payloads stored in memory.
   findReceivedWebhooks() {
     return this.receivedWebhooks;
   }
 
+  // Clears the received webhook test history.
   clearReceivedWebhooks() {
     this.receivedWebhooks = [];
 
@@ -153,6 +164,7 @@ export class WebhooksService {
     };
   }
 
+  // Creates an HMAC SHA256 signature to prove the webhook came from our app.
   private signPayload(body: string, secret: string): string {
     return createHmac('sha256', secret).update(body).digest('hex');
   }

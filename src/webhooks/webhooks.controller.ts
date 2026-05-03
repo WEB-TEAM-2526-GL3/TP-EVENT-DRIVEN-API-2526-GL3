@@ -72,6 +72,7 @@ export class WebhooksController {
     });
   }
 
+  // http://amr-app.com/cv-notifications
   @Post('test-receiver')
   testReceiver(
     @Headers() headers: Record<string, string>,
@@ -84,3 +85,25 @@ export class WebhooksController {
     });
   }
 }
+
+// Simple flow:
+// Admin registers webhook
+// POST /webhooks/register
+
+// CV is created or admin triggers test
+// POST /webhooks/test/cv.created
+// Webhook is sent to
+// POST /webhooks/test-receiver
+// You view received webhook
+// GET /webhooks/received
+
+// POST /webhooks/register HTTP/1.1
+// Host: localhost:3000
+// Content-Type: application/json
+// Authorization: Bearer ADMIN_TOKEN
+// {
+//   "url": "http://amr-app.com/cv-notifications",
+//   "event": "cv.created",
+//   "secret": "amr-secret"
+// }
+// --it sends a POST request to Amr’s URL--
