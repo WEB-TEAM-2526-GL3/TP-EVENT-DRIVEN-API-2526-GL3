@@ -7,6 +7,7 @@ import { StorageModule } from '../storage/storage.module';
 import { SkillModule } from '../skill/skill.module';
 import { UserModule } from '../user/user.module';
 import { RoleGuard } from '../auth/role.guard';
+import { WebhooksModule } from '../webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { RoleGuard } from '../auth/role.guard';
     StorageModule,
     SkillModule,
     UserModule,
+    WebhooksModule,
   ],
   controllers: [CvController],
   providers: [CvService, RoleGuard],

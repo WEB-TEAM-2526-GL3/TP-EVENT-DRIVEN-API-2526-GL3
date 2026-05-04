@@ -78,7 +78,6 @@ export class CvController {
         return cvOwnerId === request.user.id;
       }),
       map((payload: CvEventPayload) => {
-        console.log({ payload });
         return new MessageEvent('cv-changed', { data: payload });
       }),
       take(SSE_MAX_EVENTS),

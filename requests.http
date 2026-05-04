@@ -3,7 +3,7 @@
 
 ### First: try hello world
 
-http://localhost:3000
+GET http://localhost:3000
 
 
 ### Try logining in
@@ -18,7 +18,7 @@ content-type: application/json
 
 ### Try a protected endpoint
 
-http://localhost:3000/cv
+GET http://localhost:3000/cv
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlJhZ25hcl9NdHNoYWxpIiwic3ViIjo0LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzc4MzYyNTMsImV4cCI6MjM4MjYzNjI1M30.w441vcSDHz1IwEbMG4OAlzkeijE8-eqKK5CXWyAjvGo
 
 ### Create a CV
@@ -38,11 +38,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlJhZ
 
 ### delete a CV
 
-DELETE http://localhost:3000/cv/1 HTTP/1.1
+DELETE http://localhost:3000/cv/7 HTTP/1.1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlJhZ25hcl9NdHNoYWxpIiwic3ViIjo0LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzc4MzYyNTMsImV4cCI6MjM4MjYzNjI1M30.w441vcSDHz1IwEbMG4OAlzkeijE8-eqKK5CXWyAjvGo
 
 
 ### SSE : cv-changed
 
-http://localhost:3000/cv/sse
+GET http://localhost:3000/cv/sse
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlJhZ25hcl9NdHNoYWxpIiwic3ViIjo0LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzc4MzYyNTMsImV4cCI6MjM4MjYzNjI1M30.w441vcSDHz1IwEbMG4OAlzkeijE8-eqKK5CXWyAjvGo

@@ -54,6 +54,11 @@ gestionnaire-cvs/dist/
 
 */uploads/
 
+# Webhook testing
+
+credintials.txt
+webhook_listener.py
+
 # IDEs
 
 .idea/

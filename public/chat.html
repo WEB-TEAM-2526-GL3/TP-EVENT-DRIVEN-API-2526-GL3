@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Private Chat</title>
+
+    <!-- Socket.IO client library -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <!-- Chat CSS file -->
+    <link rel="stylesheet" href="/chat/assets/chat.css" />
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Private Chat</h1>
+            <p>You are chatting with user id: <strong id="receiverIdText"></strong></p>
+        </div>
+
+        <div class="auth-box">
+            <input id="tokenInput" placeholder="Paste your JWT token here" />
+            <button onclick="connectChat()">Connect</button>
+        </div>
+
+        <div id="status" class="status">Not connected</div>
+
+        <div id="messages" class="messages"></div>
+
+        <div id="replying" class="replying">
+            Replying to message <span id="replyId"></span>
+            <button onclick="cancelReply()">Cancel</button>
+        </div>
+
+        <div class="composer">
+            <input id="messageInput" placeholder="Write a message..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <!-- Chat JavaScript file -->
+    <script src="/chat/assets/chat.js"></script>
+</body>
+
+</html>

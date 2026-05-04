@@ -18,6 +18,8 @@ import {
   CvEventPayload,
   CvOperationType,
 } from '../cv-history/dto/cv-event-payload.dto';
+import { WebhooksService } from '../webhooks/webhooks.service';
+import { WebhookEvent } from '../enums/webhook-event.enum';
 
 @Injectable()
 export class CvService {
@@ -28,6 +30,7 @@ export class CvService {
     private readonly skillService: SkillService,
     private readonly userService: UserService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly webhooksService: WebhooksService,
   ) {}
 
   async create(createCvDto: CreateCvDto, actor: AuthUser) {
@@ -53,15 +56,25 @@ export class CvService {
       skills: resolvedSkills ?? [],
     });
 
-    const saved = await this.cvRepository.save(cv);
+    const savedCv = await this.cvRepository.save(cv);
+
+    this.notifyWebhook(WebhookEvent.CV_CREATED, {
+      cvId: savedCv.id,
+      userId: ownerId,
+      name: savedCv.name,
+      firstname: savedCv.firstname,
+      lastname: savedCv.lastname,
+      job: savedCv.job,
+    });
+
     const payload: CvEventPayload = {
       operation: CvOperationType.CREATE,
-      cv: saved,
+      cv: savedCv,
       actorId: actor.id,
       timestamp: new Date(),
     };
     this.eventEmitter.emit('cv.changed', payload);
-    return saved;
+    return savedCv;
   }
 
   async seedCreate(createCvDto: CreateCvDto) {
@@ -116,15 +129,23 @@ export class CvService {
       updatedCv.skills =
         (await this.skillService.resolveSkills(skillIds)) ?? [];
     }
-    const saved = await this.cvRepository.save(updatedCv);
+
+    const savedCv = await this.cvRepository.save(updatedCv);
+
+    this.notifyWebhook(WebhookEvent.CV_UPDATED, {
+      cvId: savedCv.id,
+      userId,
+      changes: updateCvDto,
+    });
+
     this.eventEmitter.emit('cv.changed', {
       operation: CvOperationType.UPDATE,
       before: existingCv,
-      after: saved,
+      after: savedCv,
       actorId: userId,
       timestamp: new Date(),
     });
-    return saved;
+    return savedCv;
   }
 
   async remove(id: number, userId: number = -1) {
@@ -144,6 +165,15 @@ export class CvService {
       actorId: userId,
       timestamp: new Date(),
     });
+
+    this.notifyWebhook(WebhookEvent.CV_DELETED, {
+      cvId: id,
+      userId,
+      name: existingCv.name,
+      firstname: existingCv.firstname,
+      lastname: existingCv.lastname,
+    });
+
     return { message: `CV with id ${id} deleted` };
   }
 
@@ -173,6 +203,13 @@ export class CvService {
       timestamp: new Date(),
     });
 
+    this.notifyWebhook(WebhookEvent.CV_UPDATED, {
+      cvId: savedCv.id,
+      userId,
+      action: 'cv_file_uploaded',
+      path: savedCv.path,
+    });
+
     return savedCv;
   }
 
@@ -193,6 +230,21 @@ export class CvService {
       await this.fileStorageService.deleteFileIfExists(oldImagePath);
     }
 
+    this.notifyWebhook(WebhookEvent.CV_UPDATED, {
+      cvId: savedCv.id,
+      userId,
+      action: 'cv_image_uploaded',
+      imagePath: savedCv.imagePath,
+    });
+
     return savedCv;
+  }
+
+  private notifyWebhook(event: WebhookEvent, data: Record<string, unknown>) {
+    void this.webhooksService.dispatch(event, data).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+
+      console.error(`Webhook dispatch failed for ${event}: ${message}`);
+    });
   }
 }

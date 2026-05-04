@@ -9,6 +9,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SeedModule } from './seed/seed.module';
 import { CvHistoryModule } from './cv-history/cv-history.module';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { AuthModule } from './auth/auth.module';
     UserModule,
     SeedModule,
     AuthModule,
+    ChatModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
