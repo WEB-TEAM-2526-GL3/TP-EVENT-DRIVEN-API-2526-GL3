@@ -1,8 +1,10 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
   ParseIntPipe,
+  Post,
   Request,
   Res,
   UseGuards,
@@ -19,19 +21,50 @@ import { AuthUser } from '../interfaces/auth-user.interface';
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  @Get('messages/:receiverId')
+  @Get('conversations/:conversationId/messages')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   async getMessages(
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Request() request: { user: AuthUser },
+  ) {
+    const messages = await this.chatService.findMessages(
+      request.user.id,
+      conversationId,
+    );
+
+    return messages.map((message) => this.chatService.formatMessage(message));
+  }
+
+  @Post('direct/:receiverId')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  async getOrCreateDirectConversation(
     @Param('receiverId', ParseIntPipe) receiverId: number,
     @Request() request: { user: AuthUser },
   ) {
-    const messages = await this.chatService.findConversation(
+    const conversation = await this.chatService.getOrCreateDirectConversation(
       request.user.id,
       receiverId,
     );
 
-    return messages.map((message) => this.chatService.formatMessage(message));
+    return this.chatService.formatConversation(conversation);
+  }
+
+  @Post('groups')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  async createGroupConversation(
+    @Body() body: { name: string; memberIds: number[] },
+    @Request() request: { user: AuthUser },
+  ) {
+    const conversation = await this.chatService.createGroupConversation(
+      request.user.id,
+      body.name,
+      body.memberIds || [],
+    );
+
+    return this.chatService.formatConversation(conversation);
   }
 
   @Get('assets/chat.js')

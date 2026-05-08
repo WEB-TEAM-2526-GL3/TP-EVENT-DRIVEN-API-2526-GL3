@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { ChatReaction } from './chat-reaction.entity';
+import { Conversation } from './conversation.entity';
 
 @Entity('chat_messages')
 export class ChatMessage {
@@ -19,18 +20,20 @@ export class ChatMessage {
   content!: string;
 
   @Column()
+  conversationId!: number;
+
+  @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'conversationId' })
+  conversation!: Conversation;
+
+  @Column()
   senderId!: number;
 
   @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'senderId' })
   sender!: User;
-
-  @Column()
-  receiverId!: number;
-
-  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'receiverId' })
-  receiver!: User;
 
   @Column({ nullable: true })
   replyToId?: number;

@@ -5,9 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+
 import { ChatMessage } from './entities/chat-message.entity';
 import { ChatReaction } from './entities/chat-reaction.entity';
+import { Conversation } from './entities/conversation.entity';
+import { ConversationMember } from './entities/conversation-member.entity';
 import { User } from '../user/entities/user.entity';
 
 @Injectable()
@@ -18,30 +21,149 @@ export class ChatService {
 
     @InjectRepository(ChatReaction)
     private readonly reactionRepository: Repository<ChatReaction>,
-    // Repository pour vérifier l’existence des utilisateurs
+
+    @InjectRepository(Conversation)
+    private readonly conversationRepository: Repository<Conversation>,
+
+    @InjectRepository(ConversationMember)
+    private readonly memberRepository: Repository<ConversationMember>,
+
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
 
-  //On trie les IDs pour garantir que les deux utilisateurs rejoignent toujours la même room.
-  getRoomName(userId1: number, userId2: number): string {
-    const ids = [userId1, userId2].sort((a, b) => a - b);
-    return `chat-${ids[0]}-${ids[1]}`;
+  getRoomName(conversationId: number): string {
+    return `conversation:${conversationId}`;
   }
 
-  //On cherche les messages dans les deux sens
-  async findConversation(userId: number, receiverId: number) {
+  private getDirectKey(userId1: number, userId2: number): string {
+    const ids = [userId1, userId2].sort((a, b) => a - b);
+    return `${ids[0]}-${ids[1]}`;
+  }
+
+  async getOrCreateDirectConversation(userId: number, receiverId: number) {
+    if (userId === receiverId) {
+      throw new BadRequestException('You cannot chat with yourself');
+    }
+
     await this.ensureUserExists(receiverId);
 
+    const directKey = this.getDirectKey(userId, receiverId);
+
+    const existingConversation = await this.conversationRepository.findOne({
+      where: {
+        type: 'direct',
+        directKey,
+      },
+      relations: ['members', 'members.user'],
+    });
+
+    if (existingConversation) {
+      return existingConversation;
+    }
+
+    const newConversation = this.conversationRepository.create({
+      type: 'direct',
+      name: null,
+      directKey,
+    });
+
+    const savedConversation =
+      await this.conversationRepository.save(newConversation);
+
+    await this.memberRepository.save([
+      this.memberRepository.create({
+        conversationId: savedConversation.id,
+        userId,
+        role: 'member',
+      }),
+      this.memberRepository.create({
+        conversationId: savedConversation.id,
+        userId: receiverId,
+        role: 'member',
+      }),
+    ]);
+
+    return this.conversationRepository.findOneOrFail({
+      where: {
+        id: savedConversation.id,
+      },
+      relations: ['members', 'members.user'],
+    });
+  }
+
+  async getConversationForUser(userId: number, conversationId: number) {
+    await this.ensureMember(userId, conversationId);
+
+    return this.conversationRepository.findOneOrFail({
+      where: {
+        id: conversationId,
+      },
+      relations: ['members', 'members.user'],
+    });
+  }
+
+  async createGroupConversation(
+    creatorId: number,
+    name: string,
+    memberIds: number[],
+  ) {
+    if (!name || !name.trim()) {
+      throw new BadRequestException('Group name is required');
+    }
+
+    const uniqueMemberIds = Array.from(new Set([creatorId, ...memberIds]));
+
+    if (uniqueMemberIds.length < 3) {
+      throw new BadRequestException('A group needs at least 3 members');
+    }
+
+    const users = await this.userRepository.find({
+      where: {
+        id: In(uniqueMemberIds),
+      },
+    });
+
+    if (users.length !== uniqueMemberIds.length) {
+      throw new NotFoundException('One or more users were not found');
+    }
+
+    const newConversation = this.conversationRepository.create({
+      type: 'group',
+      name: name.trim(),
+      directKey: null,
+    });
+
+    const savedConversation =
+      await this.conversationRepository.save(newConversation);
+
+    const members = uniqueMemberIds.map((memberId) =>
+      this.memberRepository.create({
+        conversationId: savedConversation.id,
+        userId: memberId,
+        role: memberId === creatorId ? 'admin' : 'member',
+      }),
+    );
+
+    await this.memberRepository.save(members);
+
+    return this.conversationRepository.findOneOrFail({
+      where: {
+        id: savedConversation.id,
+      },
+      relations: ['members', 'members.user'],
+    });
+  }
+
+  async findMessages(userId: number, conversationId: number) {
+    await this.ensureMember(userId, conversationId);
+
     return this.messageRepository.find({
-      where: [
-        { senderId: userId, receiverId },
-        { senderId: receiverId, receiverId: userId },
-      ],
-      // Charge les données liées au message
-      relations: ['replyTo', 'replyTo.sender', 'reactions'],
+      where: {
+        conversationId,
+      },
+      relations: ['sender', 'replyTo', 'replyTo.sender', 'reactions'],
       order: {
-        // Trie les messages du plus ancien au plus récent
         createdAt: 'ASC',
       },
     });
@@ -49,7 +171,7 @@ export class ChatService {
 
   async createMessage(
     senderId: number,
-    receiverId: number,
+    conversationId: number,
     content: string,
     replyToId?: number,
   ) {
@@ -57,26 +179,20 @@ export class ChatService {
       throw new BadRequestException('Message cannot be empty');
     }
 
-    if (senderId === receiverId) {
-      throw new BadRequestException('You cannot chat with yourself');
-    }
-
-    await this.ensureUserExists(receiverId);
+    await this.ensureMember(senderId, conversationId);
 
     if (replyToId) {
       const replyTo = await this.messageRepository.findOne({
-        where: { id: replyToId },
+        where: {
+          id: replyToId,
+        },
       });
 
       if (!replyTo) {
         throw new NotFoundException('Reply message not found');
       }
 
-      const belongsToSameConversation =
-        (replyTo.senderId === senderId && replyTo.receiverId === receiverId) ||
-        (replyTo.senderId === receiverId && replyTo.receiverId === senderId);
-
-      if (!belongsToSameConversation) {
+      if (replyTo.conversationId !== conversationId) {
         throw new ForbiddenException(
           'You cannot reply to a message from another conversation',
         );
@@ -85,7 +201,7 @@ export class ChatService {
 
     const message = this.messageRepository.create({
       senderId,
-      receiverId,
+      conversationId,
       content: content.trim(),
       replyToId,
     });
@@ -93,8 +209,10 @@ export class ChatService {
     const savedMessage = await this.messageRepository.save(message);
 
     return this.messageRepository.findOneOrFail({
-      where: { id: savedMessage.id },
-      relations: ['replyTo', 'replyTo.sender', 'reactions'],
+      where: {
+        id: savedMessage.id,
+      },
+      relations: ['sender', 'replyTo', 'replyTo.sender', 'reactions'],
     });
   }
 
@@ -104,20 +222,17 @@ export class ChatService {
     }
 
     const message = await this.messageRepository.findOne({
-      where: { id: messageId },
+      where: {
+        id: messageId,
+      },
     });
 
     if (!message) {
       throw new NotFoundException('Message not found');
     }
 
-    if (message.senderId !== userId && message.receiverId !== userId) {
-      throw new ForbiddenException(
-        'You cannot react to a message from another conversation',
-      );
-    }
+    await this.ensureMember(userId, message.conversationId);
 
-    // Vérifie si cet utilisateur a déjà mis le même emojisur ce même message
     const existingReaction = await this.reactionRepository.findOne({
       where: {
         messageId,
@@ -127,7 +242,6 @@ export class ChatService {
     });
 
     if (existingReaction) {
-      // Si la réaction existe déjà, on la supprime
       await this.reactionRepository.delete(existingReaction.id);
     } else {
       const reaction = this.reactionRepository.create({
@@ -138,47 +252,70 @@ export class ChatService {
 
       await this.reactionRepository.save(reaction);
     }
-    // Récupère toutes les réactions du message pour recalculer le résumé
+
     const reactions = await this.reactionRepository.find({
-      where: { messageId },
+      where: {
+        messageId,
+      },
     });
 
     return {
       message,
       reactions: this.summarizeReactions(reactions),
     };
-    /**
-     *    * Résultat :
-     * [
-     *   { emoji: '👍', count: 2 },
-     *   { emoji: '❤️', count: 1 }
-     * ]
-     */
+  }
+
+  async ensureMember(userId: number, conversationId: number) {
+    const member = await this.memberRepository.findOne({
+      where: {
+        userId,
+        conversationId,
+      },
+    });
+
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this conversation');
+    }
+
+    return member;
   }
 
   summarizeReactions(reactions: ChatReaction[] = []) {
     const summary: Record<string, number> = {};
-    // Compte combien de fois chaque emoji apparait
+
     for (const reaction of reactions) {
       summary[reaction.emoji] = (summary[reaction.emoji] || 0) + 1;
     }
 
-    // Transforme l’objet summary en tableau exploitable par le frontend
     return Object.entries(summary).map(([emoji, count]) => ({
       emoji,
       count,
     }));
   }
 
-  //garde seulement les champs utiles pour l’interface.
+  formatConversation(conversation: Conversation) {
+    return {
+      id: conversation.id,
+      type: conversation.type,
+      name: conversation.name,
+      members:
+        conversation.members?.map((member) => ({
+          id: member.userId,
+          username: member.user?.username,
+          role: member.role,
+        })) || [],
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+    };
+  }
+
   formatMessage(message: ChatMessage) {
     return {
       id: message.id,
+      conversationId: message.conversationId,
       content: message.content,
       senderId: message.senderId,
       senderUsername: message.sender?.username,
-      receiverId: message.receiverId,
-      receiverUsername: message.receiver?.username,
       replyToId: message.replyToId,
       replyTo: message.replyTo
         ? {
@@ -195,7 +332,9 @@ export class ChatService {
 
   private async ensureUserExists(userId: number) {
     const user = await this.userRepository.findOne({
-      where: { id: userId },
+      where: {
+        id: userId,
+      },
     });
 
     if (!user) {

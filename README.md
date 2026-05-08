@@ -31,3 +31,34 @@ Before staging and committing, test your solution
 - Make sure everything is fine [maybe by running the application]
 - `git add ...`
 - `git commit -m "..."`
+
+
+
+
+
+
+Amr wake up:
+this is the right logic for web socket
+
+User
+- id
+- name
+- email
+
+Conversation
+- id
+- type        // "direct" or "group"
+- name        // group name, can be null for direct chat
+
+ConversationMember
+- id
+- conversationId
+- userId
+- role        // "member", "admin"
+
+Message
+- id
+- conversationId
+- senderId
+- text
+- createdAt
