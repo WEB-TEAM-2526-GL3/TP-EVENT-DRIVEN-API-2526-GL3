@@ -6,15 +6,25 @@ import * as dotenv from 'dotenv';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
+
 import { ChatMessage } from './entities/chat-message.entity';
 import { ChatReaction } from './entities/chat-reaction.entity';
+import { Conversation } from './entities/conversation.entity';
+import { ConversationMember } from './entities/conversation-member.entity';
+
 import { User } from '../user/entities/user.entity';
 
 dotenv.config();
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatMessage, ChatReaction, User]),
+    TypeOrmModule.forFeature([
+      ChatMessage,
+      ChatReaction,
+      Conversation,
+      ConversationMember,
+      User,
+    ]),
 
     JwtModule.register({
       secret: (() => {
