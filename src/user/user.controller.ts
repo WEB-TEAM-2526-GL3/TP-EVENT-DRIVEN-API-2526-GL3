@@ -18,22 +18,24 @@ import { RoleGuard } from '../auth/role.guard';
 import { RoleEnum } from '../enums/role.enum';
 import { AuthUser } from '../interfaces/auth-user.interface';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { SetMetadata } from '@nestjs/common';
+import { ROLES_KEY } from '../auth/roles.decorator';
 
 @Controller('user')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RoleGuard)
 @ApiTags('user')
 @ApiBearerAuth()
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
-  @UseGuards(RoleGuard(RoleEnum.ADMIN))
+  @SetMetadata(ROLES_KEY, [RoleEnum.ADMIN])
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
 
   @Get()
-  @UseGuards(RoleGuard(RoleEnum.ADMIN))
+  @SetMetadata(ROLES_KEY, [RoleEnum.ADMIN])
   findAll() {
     return this.userService.findAll();
   }

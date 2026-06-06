@@ -41,4 +41,9 @@ export class CreateCvDto {
   @IsInt({ each: true })
   @Min(1, { each: true })
   skills?: number[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  userId?: number;
 }

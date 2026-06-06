@@ -1,16 +1,23 @@
 import {
-  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CreateCvDto } from './dto/create-cv.dto';
 import { UpdateCvDto } from './dto/update-cv.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cv } from './entities/cv.entity';
-import { In, Repository } from 'typeorm';
-import { User } from '../user/entities/user.entity';
+import { Repository } from 'typeorm';
+import { UserService } from '../user/user.service';
 import { FileStorageService } from '../storage/file-storage.service';
-import { Skill } from '../skill/entities/skill.entity';
+import { SkillService } from '../skill/skill.service';
+import { AuthUser } from '../interfaces/auth-user.interface';
+import { RoleEnum } from '../enums/role.enum';
+import {
+  CvEventPayload,
+  CvOperationType,
+} from '../cv-history/dto/cv-event-payload.dto';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { WebhookEvent } from '../enums/webhook-event.enum';
 
@@ -19,19 +26,33 @@ export class CvService {
   constructor(
     @InjectRepository(Cv)
     private readonly cvRepository: Repository<Cv>,
-    @InjectRepository(Skill)
-    private readonly skillRepository: Repository<Skill>,
     private readonly fileStorageService: FileStorageService,
+    private readonly skillService: SkillService,
+    private readonly userService: UserService,
+    private readonly eventEmitter: EventEmitter2,
     private readonly webhooksService: WebhooksService,
   ) {}
 
-  async create(createCvDto: CreateCvDto, userId: number) {
-    const { skills: skillIds, ...cvData } = createCvDto;
-    const resolvedSkills = await this.resolveSkills(skillIds);
+  async create(createCvDto: CreateCvDto, actor: AuthUser) {
+    const {
+      skills: skillIds = [],
+      userId: ownerIdFromBody,
+      ...cvData
+    } = createCvDto;
+    const ownerId = ownerIdFromBody ?? actor.id;
+    const isAdmin = (actor.role as RoleEnum) === RoleEnum.ADMIN;
+    const resolvedSkills = await this.skillService.resolveSkills(skillIds);
+    const resolvedUser = await this.userService.resolveUser(ownerId);
+
+    if (!isAdmin && ownerId !== actor.id) {
+      throw new ForbiddenException(
+        'You can only create a CV for your own account',
+      );
+    }
 
     const cv = this.cvRepository.create({
       ...cvData,
-      user: { id: userId } as User,
+      user: resolvedUser,
       skills: resolvedSkills ?? [],
     });
 
@@ -39,15 +60,33 @@ export class CvService {
 
     this.notifyWebhook(WebhookEvent.CV_CREATED, {
       cvId: savedCv.id,
-      userId,
+      userId: ownerId,
       name: savedCv.name,
       firstname: savedCv.firstname,
       lastname: savedCv.lastname,
       job: savedCv.job,
     });
 
+    const payload: CvEventPayload = {
+      operation: CvOperationType.CREATE,
+      cv: savedCv,
+      actorId: actor.id,
+      timestamp: new Date(),
+    };
+    this.eventEmitter.emit('cv.changed', payload);
     return savedCv;
-    // return await this.cvRepository.save(cv);
+  }
+
+  async seedCreate(createCvDto: CreateCvDto) {
+    const { skills: skillIds = [], userId, ...cvData } = createCvDto;
+    const cv = this.cvRepository.create({
+      ...cvData,
+      user: await this.userService.resolveUser(userId!),
+      skills: await this.skillService.resolveSkills(skillIds),
+    });
+
+    const saved = await this.cvRepository.save(cv);
+    return saved;
   }
 
   async findAll(userId: number) {
@@ -63,9 +102,16 @@ export class CvService {
     });
   }
 
-  findOne(id: number, userId: number) {
-    return this.cvRepository.findOne({
+  async findOne(id: number, userId: number) {
+    return await this.cvRepository.findOne({
       where: { id, user: { id: userId } },
+      relations: ['skills'],
+    });
+  }
+
+  async findOneForAdmin(id: number) {
+    return await this.cvRepository.findOne({
+      where: { id },
       relations: ['skills'],
     });
   }
@@ -80,7 +126,8 @@ export class CvService {
     const { skills: skillIds, ...partialData } = updateCvDto;
     const updatedCv = this.cvRepository.merge(existingCv, partialData);
     if (skillIds !== undefined) {
-      updatedCv.skills = (await this.resolveSkills(skillIds)) ?? [];
+      updatedCv.skills =
+        (await this.skillService.resolveSkills(skillIds)) ?? [];
     }
 
     const savedCv = await this.cvRepository.save(updatedCv);
@@ -91,18 +138,33 @@ export class CvService {
       changes: updateCvDto,
     });
 
+    this.eventEmitter.emit('cv.changed', {
+      operation: CvOperationType.UPDATE,
+      before: existingCv,
+      after: savedCv,
+      actorId: userId,
+      timestamp: new Date(),
+    });
     return savedCv;
-    // return this.cvRepository.save(updatedCv);
   }
 
-  async remove(id: number, userId: number) {
-    const existingCv = await this.findOne(id, userId);
+  async remove(id: number, userId: number = -1) {
+    const existingCv =
+      userId === -1
+        ? await this.findOneForAdmin(id)
+        : await this.findOne(id, userId);
 
     if (!existingCv) {
       throw new NotFoundException(`CV with id ${id} not found`);
     }
 
     await this.cvRepository.remove(existingCv);
+    this.eventEmitter.emit('cv.changed', {
+      operation: CvOperationType.DELETE,
+      cv: existingCv,
+      actorId: userId,
+      timestamp: new Date(),
+    });
 
     this.notifyWebhook(WebhookEvent.CV_DELETED, {
       cvId: id,
@@ -131,6 +193,15 @@ export class CvService {
     if (oldPath && oldPath !== newPath) {
       await this.fileStorageService.deleteFileIfExists(oldPath);
     }
+
+    this.eventEmitter.emit('cv.changed', {
+      operation: CvOperationType.UPLOAD_FILE,
+      cvId: savedCv.id,
+      beforePath: oldPath,
+      newPath,
+      actorId: userId,
+      timestamp: new Date(),
+    });
 
     this.notifyWebhook(WebhookEvent.CV_UPDATED, {
       cvId: savedCv.id,
@@ -167,24 +238,6 @@ export class CvService {
     });
 
     return savedCv;
-  }
-
-  private async resolveSkills(
-    skillIds?: number[],
-  ): Promise<Skill[] | undefined> {
-    if (skillIds === undefined) return undefined;
-    if (skillIds.length === 0) return [];
-
-    const uniqueSkillIds = Array.from(new Set(skillIds));
-    const skills = await this.skillRepository.find({
-      where: { id: In(uniqueSkillIds) },
-    });
-
-    if (skills.length !== uniqueSkillIds.length) {
-      throw new BadRequestException('One or more skills are invalid');
-    }
-
-    return skills;
   }
 
   private notifyWebhook(event: WebhookEvent, data: Record<string, unknown>) {

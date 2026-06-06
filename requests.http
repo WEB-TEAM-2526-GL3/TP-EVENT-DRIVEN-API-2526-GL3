@@ -1,0 +1,48 @@
+### Use cURL to test better
+
+
+### First: try hello world
+
+GET http://localhost:3000
+
+
+### Try logining in
+
+POST http://localhost:3000/auth/login HTTP/1.1
+content-type: application/json
+
+{
+  "usernameOrEmail": "Ragnar_Mtshali",
+  "password": "J8kaQARadWmjTof"
+}
+
+### Try a protected endpoint
+
+GET http://localhost:3000/cv
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlJhZ25hcl9NdHNoYWxpIiwic3ViIjo0LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzc4MzYyNTMsImV4cCI6MjM4MjYzNjI1M30.w441vcSDHz1IwEbMG4OAlzkeijE8-eqKK5CXWyAjvGo
+
+### Create a CV
+
+POST http://localhost:3000/cv HTTP/1.1
+content-type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlJhZ25hcl9NdHNoYWxpIiwic3ViIjo0LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzc4MzYyNTMsImV4cCI6MjM4MjYzNjI1M30.w441vcSDHz1IwEbMG4OAlzkeijE8-eqKK5CXWyAjvGo
+
+{
+    "name": "CVCV",
+    "firstname": "Hamza",
+    "lastname": "Bouzid",
+    "age": 24,
+    "cin": "12345678",
+    "job": "Full Stack Developer"
+}
+
+### delete a CV
+
+DELETE http://localhost:3000/cv/7 HTTP/1.1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlJhZ25hcl9NdHNoYWxpIiwic3ViIjo0LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzc4MzYyNTMsImV4cCI6MjM4MjYzNjI1M30.w441vcSDHz1IwEbMG4OAlzkeijE8-eqKK5CXWyAjvGo
+
+
+### SSE : cv-changed
+
+GET http://localhost:3000/cv/sse
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlJhZ25hcl9NdHNoYWxpIiwic3ViIjo0LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzc4MzYyNTMsImV4cCI6MjM4MjYzNjI1M30.w441vcSDHz1IwEbMG4OAlzkeijE8-eqKK5CXWyAjvGo

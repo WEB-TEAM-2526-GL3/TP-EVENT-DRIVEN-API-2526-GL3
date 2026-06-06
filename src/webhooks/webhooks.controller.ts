@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -15,14 +16,15 @@ import { WebhooksService } from './webhooks.service';
 import { WebhookEvent } from '../enums/webhook-event.enum';
 import { RoleGuard } from '../auth/role.guard';
 import { RoleEnum } from '../enums/role.enum';
+import { ROLES_KEY } from '../auth/roles.decorator';
 
 @Controller('webhooks')
+@UseGuards(AuthGuard('jwt'), RoleGuard)
 @ApiTags('webhooks')
 export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
   @Post('register')
-  @UseGuards(AuthGuard('jwt'), RoleGuard(RoleEnum.ADMIN))
   @ApiBearerAuth()
   register(
     @Body()
@@ -36,7 +38,7 @@ export class WebhooksController {
   }
 
   @Get()
-  @UseGuards(AuthGuard('jwt'), RoleGuard(RoleEnum.ADMIN))
+  @SetMetadata(ROLES_KEY, [RoleEnum.ADMIN])
   @ApiBearerAuth()
   findAll() {
     return this.webhooksService.findAll();
@@ -53,14 +55,14 @@ export class WebhooksController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'), RoleGuard(RoleEnum.ADMIN))
+  @SetMetadata(ROLES_KEY, [RoleEnum.ADMIN])
   @ApiBearerAuth()
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.webhooksService.deleteSubscription(id);
   }
 
   @Post('test/:event')
-  @UseGuards(AuthGuard('jwt'), RoleGuard(RoleEnum.ADMIN))
+  @SetMetadata(ROLES_KEY, [RoleEnum.ADMIN])
   @ApiBearerAuth()
   testDispatch(
     @Param('event') event: WebhookEvent,

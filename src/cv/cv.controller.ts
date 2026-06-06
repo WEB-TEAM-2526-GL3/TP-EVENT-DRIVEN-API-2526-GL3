@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Request,
+  Sse,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -19,22 +20,34 @@ import { AuthUser } from '../interfaces/auth-user.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { SetMetadata } from '@nestjs/common';
 import { RoleGuard } from '../auth/role.guard';
 import { RoleEnum } from '../enums/role.enum';
+import { ROLES_KEY } from '../auth/roles.decorator';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Observable, fromEventPattern } from 'rxjs';
+import { map, filter, take } from 'rxjs/operators';
+import { CvEventPayload } from '../cv-history/dto/cv-event-payload.dto';
+
+// max number of events to send for a single connection
+const SSE_MAX_EVENTS = 2;
 
 @Controller('cv')
-@UseGuards(AuthGuard('jwt'))
-@ApiTags('cv')
-@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'), RoleGuard)
+// @ApiTags('cv')
+// @ApiBearerAuth()
 export class CvController {
-  constructor(private readonly cvService: CvService) {}
+  constructor(
+    private readonly cvService: CvService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   @Post()
   create(
     @Body() createCvDto: CreateCvDto,
     @Request() request: { user: AuthUser },
   ) {
-    return this.cvService.create(createCvDto, request.user.id);
+    return this.cvService.create(createCvDto, request.user);
   }
 
   @Get()
@@ -43,9 +56,34 @@ export class CvController {
   }
 
   @Get('all')
-  @UseGuards(RoleGuard(RoleEnum.ADMIN))
+  @SetMetadata(ROLES_KEY, [RoleEnum.ADMIN]) // can be changed to : @Roles([RoleEnum.ADMIN])
   findAllForAdmin() {
     return this.cvService.findAllForAdmin();
+  }
+
+  @Sse('sse')
+  sse(@Request() request: { user: AuthUser }): Observable<MessageEvent> {
+    const isAdmin = (request.user.role as RoleEnum) === RoleEnum.ADMIN;
+
+    const fep = fromEventPattern<CvEventPayload>(
+      (handler) => this.eventEmitter.on('cv.changed', handler),
+      (handler) => this.eventEmitter.off('cv.changed', handler),
+    ).pipe(
+      filter((payload: CvEventPayload) => {
+        if (isAdmin) {
+          return true;
+        }
+        const cvEntity = payload.cv || payload.after || payload.before!;
+        const cvOwnerId = cvEntity.user.id;
+        return cvOwnerId === request.user.id;
+      }),
+      map((payload: CvEventPayload) => {
+        return new MessageEvent('cv-changed', { data: payload });
+      }),
+      take(SSE_MAX_EVENTS),
+    );
+
+    return fep;
   }
 
   @Get(':id')
@@ -77,7 +115,10 @@ export class CvController {
   @Delete(':id')
   remove(@Param('id') id: string, @Request() request: { user: AuthUser }) {
     // won't say whether it's "not authorized" or "not found", to avoid exploits
-    return this.cvService.remove(+id, request.user.id);
+    return this.cvService.remove(
+      +id,
+      request.user.role === RoleEnum.ADMIN.toString() ? -1 : request.user.id,
+    );
   }
 
   @Post('upload/:id')

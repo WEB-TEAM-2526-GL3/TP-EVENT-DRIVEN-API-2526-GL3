@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Skill } from './entities/skill.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class SkillService {
@@ -21,6 +21,21 @@ export class SkillService {
 
   findOne(id: number) {
     return this.skillRepository.findOne({ where: { id } });
+  }
+
+  async resolveSkills(skillIds: number[]): Promise<Skill[]> {
+    if (skillIds.length === 0) return [];
+
+    const uniqueSkillIds = Array.from(new Set(skillIds));
+    const skills = await this.skillRepository.find({
+      where: { id: In(uniqueSkillIds) },
+    });
+
+    if (skills.length !== uniqueSkillIds.length) {
+      throw new BadRequestException('One or more skills are invalid');
+    }
+
+    return skills;
   }
 
   update(id: number, updateSkillDto: UpdateSkillDto) {
